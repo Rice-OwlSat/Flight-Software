@@ -1,4 +1,3 @@
-
 # State ID Constants
 STOWED = 0
 DEPLOYING = 1
@@ -103,4 +102,10 @@ class StateMachine:
         elif self.state == RECOVERY:
             pass
 
+    def get_flags(self):
+        return self.task_flags
 
+    def iterate(self):
+        self.progress_state()
+        self.update_tasks()
+        return self.get_flags()
