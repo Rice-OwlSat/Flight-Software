@@ -12,6 +12,13 @@ class task(Task):
     color = 'red'
 
     async def main_task(self):
+        # Update state machine conditions with new data:
+        condition_flags = {"deployed": 0, # TODO - ADD CHECKS
+                          "detumbled": 0, # TODO - ADD CHECKS
+                         "battery_ok": 0, # TODO - ADD CHECKS
+                           "comms_ok": 0} # TODO - ADD CHECKS
+        SM.update_conditions(condition_flags)
+
         # Iterate SM and get task flags:
         flags = SM.iterate()
 

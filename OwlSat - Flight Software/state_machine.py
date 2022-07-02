@@ -7,12 +7,15 @@ MISSION = 4
 RECOVERY = -1
 
 TASK_SETS = {DEPLOYING: ["deploy_antenna"],
-            DETUMBLING: ["collect_imu_data",
+            DETUMBLING: ["poll_power_status",
+                         "collect_imu_data",
                          "update_magnetorquer_command"],
-                STABLE: ["collect_imu_data",
+                STABLE: ["poll_power_status",
+                         "collect_imu_data",
                          "update_magnetorquer_command",
                          "transmit_data"],
-               MISSION: ["collect_imu_data",
+               MISSION: ["poll_power_status",
+                         "collect_imu_data",
                          "collect_solar_data",
                          "collect_gps_data",
                          "collect_euv_data",
@@ -20,13 +23,16 @@ TASK_SETS = {DEPLOYING: ["deploy_antenna"],
                          "update_magnetorquer_command",
                          "transmit_data",
                          "write_cache_to_SD"],
-              RECOVERY: []}
+              RECOVERY: ["update_power_bus",
+                         "poll_power_status"]}
 
 ALL_TASKS = ["collect_imu_data",
              "collect_solar_data",
              "collect_gps_data",
              "collect_euv_data",
              "compute_orientation",
+             "poll_power_status",
+             "update_power_bus",
              "update_magnetorquer_command",
              "transmit_data",
              "deploy_antenna"
@@ -42,15 +48,17 @@ class StateMachine:
         self.battery_check_successful = False
         self.ground_station_link_successful = False
 
-        self.task_flags = {"collect_imu_data": False,
-                         "collect_solar_data": False,
-                           "collect_gps_data": False,
-                           "collect_euv_data": False,
-                        "compute_orientation": False,
-                "update_magnetorquer_command": False,
-                              "transmit_data": False,
-                             "deploy_antenna": False,
-                          "write_cache_to_SD": False}
+        self.task_flags = {"poll_power_status": False,
+                            "update_power_bus": False,
+                            "collect_imu_data": False,
+                          "collect_solar_data": False,
+                            "collect_gps_data": False,
+                            "collect_euv_data": False,
+                         "compute_orientation": False,
+                 "update_magnetorquer_command": False,
+                               "transmit_data": False,
+                              "deploy_antenna": False,
+                           "write_cache_to_SD": False}
 
     def reset_tasks(self):
         for task in self.task_flags.keys():
@@ -63,23 +71,32 @@ class StateMachine:
             for task in TASK_SETS[self.state]:
                 self.task_flags[task] = True
 
+    def update_conditions(self, condition_flags):
+        """
+        Updates the condition flags from the data provided by the PyCubed
+        """
+        self.deployment_successful = condition_flags["deployed"]
+        self.angular_velocity_stable = condition_flags["detumbled"]
+        self.battery_check_successful = condition_flags["battery_ok"]
+        self.ground_station_link_successful = condition_flags["comms_ok"]
+
     def progress_state(self):
         if self.state == STOWED: # Cubesat just turned ON
             self.state = DEPLOYING
-                
+
         elif self.state == DEPLOYING: # Cubesat is initialized and running - Antenna must be deployed
             if self.deployment_successful:
                 self.state = DETUMBLING
             elif not self.deployment_successful:
                 self.state = DEPLOYING
-                    
+
         elif self.state == DETUMBLING: # Cubesat is detumbling
             if self.angular_velocity_stable:
                 self.state = STABLE
             elif not self.angular_velocity_stable:
                 self.state = DETUMBLING
-                    
-        elif self.state == STABLE: # Cubessat has detumbled - Must establish comms link
+
+        elif self.state == STABLE: # Cubesat has detumbled - Must establish comms link
             if self.angular_velocity_stable and self.battery_check_successful and self.ground_station_link_successful:
                 self.state = MISSION
             elif not self.battery_check_successful:
@@ -88,7 +105,7 @@ class StateMachine:
                 self.state = DETUMBLING
             elif not self.ground_station_link_successful:
                 self.state = STABLE
-            
+
         elif self.state == MISSION: # Cubesat is performing mission
             if self.angular_velocity_stable and self.battery_check_successful and self.ground_station_link_successful:
                 self.state = MISSION
@@ -98,7 +115,7 @@ class StateMachine:
                 self.state = DETUMBLING
             elif not self.ground_station_link_successful:
                 self.state = STABLE
-                    
+
         elif self.state == RECOVERY:
             pass
 
