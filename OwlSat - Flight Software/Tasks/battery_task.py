@@ -9,12 +9,13 @@ class task(Task):
     color = 'orange'
 
     async def main_task(self):
-        vbatt=self.cubesat.battery_voltage
-        comp_var = ''
+        if self.cubesat.data_cache["task_flags"]["poll_power_status"] == True:
+            vbatt = self.cubesat.battery_voltage
+            comp_var = ''
 
-        if vbatt > self.cubesat.vlowbatt:
-            comp_var = '>'
-        else:
-            comp_var = '<'
+            if vbatt > self.cubesat.vlowbatt:
+                comp_var = '>'
+            else:
+                comp_var = '<'
 
-        self.debug('{:.1f}V {} threshold: {:.1f}V'.format(vbatt,comp_var,self.cubesat.vlowbatt))
+            self.debug('{:.1f}V {} threshold: {:.1f}V'.format(vbatt,comp_var,self.cubesat.vlowbatt))
